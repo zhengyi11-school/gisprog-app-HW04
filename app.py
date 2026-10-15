@@ -19,7 +19,7 @@ df = df[df["act"] == "1"]  # 只看營運中的站
 時段們 = sorted(df["時段"].unique())
 
 # reactive：值改變時，用到它的元件會自動重新執行。
-門檻 = solara.reactive(0)
+門檻 = solara.reactive(0)   #值有變動，他就會通知大家
 時段 = solara.reactive(時段們[0])
 
 
@@ -31,14 +31,14 @@ def 各區空站比例(資料, 門檻值):
     return 表.sort_values("空站比例", ascending=False).reset_index()
 
 
-@solara.component
-def Page():
+@solara.component   #它只是裝飾器
+def Page(): #solora是方便寫程式的東東
     solara.Title("YouBike 空站觀察")
     solara.Markdown("# 臺北 YouBike 各區空站比例")
 
     # 滑桿預設會撐滿整個頁寬，用 Column 限制最大寬度，比較好操作。
     with solara.Column(style={"max-width": "480px"}):
-        solara.SliderInt("空站門檻：可借車 ≤", value=門檻, min=0, max=5)
+        solara.SliderInt("空站門檻：可借車 ≤", value=門檻, min=0, max=5)    #這裡滑竿讓“門檻”被改變了，reactive接下來也會通知大家改變
     solara.ToggleButtonsSingle(value=時段, values=時段們)
 
     當時 = df[df["時段"] == 時段.value]
