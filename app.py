@@ -29,8 +29,6 @@ print('讀取成功')
 時段 = solara.reactive(時段們[0])
 行政區 = solara.reactive("全區")
 
-print("ho")
-
 def 各區空站比例(資料, 門檻值):
     """計算各區的站數、空站數與空站比例（可借車 <= 門檻值 算空站）。"""
     資料 = 資料.assign(空站=資料["available_rent_bikes"] <= 門檻值)
