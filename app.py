@@ -19,6 +19,7 @@ df = pd.read_csv(DATA_PATH, dtype={"sno": str, "act": str})
 營運資料 = df[df["act"] == "1"]  # 空站比例只計算營運中的站
 print('讀取成功')
 
+
 時段們 = sorted(df["時段"].unique())
 行政區們 = sorted(df["sarea"].unique())
 行政區選項 = ["全區"] + 行政區們
