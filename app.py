@@ -16,6 +16,15 @@ DATA_PATH = Path(__file__).parent / "data" / "youbike_w3_長表.csv"
 # 讀檔放在元件外面：App 啟動時只讀一次，切換選項時不會重新讀檔。
 # sno、act 指定為字串，避免被自動轉成整數（W3 的 read_json 陷阱，read_csv 也一樣）。
 df = pd.read_csv(DATA_PATH, dtype={"sno": str, "act": str})
+
+# 檢查每筆座標都有值，且落在臺北市的大致範圍內。
+assert df["latitude"].between(24.9, 25.2).all(), "發現缺少或超出臺北市範圍的緯度"
+assert df["longitude"].between(121.3, 121.8).all(), "發現缺少或超出臺北市範圍的經度"
+
+# 同一站的座標在不同時段應該相同。
+各站座標數量 = df.groupby("sno")[["latitude", "longitude"]].nunique()
+assert (各站座標數量 <= 1).all().all(), "同一站點在不同時段有不一致的座標"
+
 營運資料 = df[df["act"] == "1"]  # 空站比例只計算營運中的站
 print('讀取成功')
 
@@ -24,6 +33,60 @@ print('讀取成功')
 行政區們 = sorted(df["sarea"].unique())
 行政區選項 = ["全區"] + 行政區們
 資料時間 = "、".join(sorted(df["snapshot_time"].dropna().unique()))
+
+
+def 加入可借車分級(資料):
+    """依可借車數分組，供地圖顏色與圖例使用。"""
+    資料 = 資料.copy()
+    資料["可借車分級"] = pd.cut(
+        資料["available_rent_bikes"],
+        bins=[-1, 0, 2, 5, float("inf")],
+        labels=["0 台", "1–2 台", "3–5 台", "6 台以上"],
+    )
+    return 資料
+
+
+def 建立站點地圖(資料):
+    """依目前篩選結果繪製站點地圖。"""
+    有座標 = 資料.dropna(subset=["latitude", "longitude"])
+    if 有座標.empty:
+        solara.Markdown("目前篩選結果沒有可用座標的站點。")
+        return
+
+    有座標 = 加入可借車分級(有座標)
+    地圖 = px.scatter_mapbox(
+        有座標,
+        lat="latitude",
+        lon="longitude",
+        color="可借車分級",
+        category_orders={"可借車分級": ["0 台", "1–2 台", "3–5 台", "6 台以上"]},
+        color_discrete_map={
+            "0 台": "#D73027",
+            "1–2 台": "#FC8D59",
+            "3–5 台": "#FEE08B",
+            "6 台以上": "#1A9850",
+        },
+        hover_name="sna",
+        hover_data={
+            "sna": False,
+            "available_rent_bikes": ":.0f",
+            "latitude": False,
+            "longitude": False,
+            "可借車分級": False,
+        },
+        labels={"available_rent_bikes": "可借車數", "可借車分級": "可借車數"},
+        zoom=11,
+        center={"lat": 有座標["latitude"].mean(), "lon": 有座標["longitude"].mean()},
+        height=480,
+    )
+    地圖.update_traces(marker={"size": 11, "opacity": 0.85})
+    地圖.update_layout(
+        mapbox_style="open-street-map",
+        autosize=True,
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
+        legend={"title": {"text": "可借車數"}, "orientation": "h", "y": 1.02},
+    )
+    solara.FigurePlotly(地圖, config={"responsive": True})
 
 # reactive：值改變時，用到它的元件會自動重新執行。
 門檻 = solara.reactive(0)   #值有變動，他就會通知大家
@@ -94,11 +157,11 @@ def Page(): #solora是方便寫程式的東東
     solara.Title("YouBike 空站觀察")
     solara.Markdown("# 臺北 YouBike 各區空站比例")
 
-    # 滑桿預設會撐滿整個頁寬，用 Column 限制最大寬度，比較好操作。
-    with solara.Column(style={"max-width": "480px"}):
-        solara.SliderInt("空站門檻：可借車 ≤", value=門檻, min=0, max=5)    #這裡滑竿讓“門檻”被改變了，reactive接下來也會通知大家改變
-    solara.ToggleButtonsSingle(value=時段, values=時段們)
-    solara.Select("選擇行政區", value=行政區, values=行政區選項)
+    with solara.Div(style={"width": "100%", "max-width": "100%", "overflow-x": "hidden"}):
+        with solara.Column(style={"max-width": "480px", "width": "100%"}):
+            solara.SliderInt("空站門檻：可借車 ≤", value=門檻, min=0, max=5)
+            solara.ToggleButtonsSingle(value=時段, values=時段們)
+            solara.Select("選擇行政區", value=行政區, values=行政區選項)
 
     當時 = 營運資料[營運資料["時段"] == 時段.value]
     表 = 各區空站比例(當時, 門檻.value)
@@ -133,17 +196,30 @@ def Page(): #solora是方便寫程式的東東
         height=150 + 30 * len(表),
         showlegend=False,
     )
-    solara.FigurePlotly(圖)
+    區域資料 = df[df["時段"] == 時段.value]
+    if 行政區.value != "全區":
+        區域資料 = 區域資料[區域資料["sarea"] == 行政區.value]
+    區域資料 = 區域資料.sort_values(["sarea", "sna"])
+
+    solara.Markdown(f"## {行政區.value}站點地圖（{時段.value}）")
+    with solara.Div(
+        style={
+            "display": "grid",
+            "grid-template-columns": "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
+            "gap": "16px",
+            "width": "100%",
+        }
+    ):
+        with solara.Column(style={"min-width": "0", "width": "100%"}):
+            建立站點地圖(區域資料)
+        with solara.Column(style={"min-width": "0", "width": "100%"}):
+            solara.FigurePlotly(圖, config={"responsive": True})
 
     solara.Markdown("## 各行政區空站狀況")
     各區資料表(表, 表格選取行政區)
 
     solara.Markdown("## 站點狀況")
 
-    區域資料 = df[df["時段"] == 時段.value]
-    if 行政區.value != "全區":
-        區域資料 = 區域資料[區域資料["sarea"] == 行政區.value]
-    區域資料 = 區域資料.sort_values(["sarea", "sna"])
     站點表 = 區域資料[
         ["sna", "act", "Quantity", "available_rent_bikes"]
     ].rename(
@@ -161,4 +237,6 @@ def Page(): #solora是方便寫程式的東東
         "資料來源：臺北市 YouBike 2.0 即時資料（臺北市資料大平臺），"
         "依政府資料開放授權條款第 1 版使用。"
         f"資料時間：{資料時間}。"
+        "站點座標已併入長表；原座標取自專案樣本資料，缺漏站座標由臺北市資料大平臺即時資料補充。"
+        "底圖來源：© OpenStreetMap contributors。"
     )
