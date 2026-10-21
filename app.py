@@ -71,6 +71,7 @@ def 建立站點地圖(資料):
     }
     for 分級, 顏色 in 分級顏色.items():
         分級資料 = 有座標[有座標["可借車分級"] == 分級].copy()
+        分級資料 = 分級資料.reset_index(drop=True)
         if 分級資料.empty:
             continue
 
