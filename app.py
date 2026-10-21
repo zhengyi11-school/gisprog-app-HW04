@@ -63,11 +63,12 @@ def 建立站點地圖(資料):
     地圖.layout.height = "480px"
     地圖.layout.width = "100%"
 
+    # 以由深到淺的顏色區分級距，讓使用者也能透過明暗辨認。
     分級顏色 = {
-        "0 台": "red",
-        "1–2 台": "orange",
-        "3–5 台": "beige",
-        "6 台以上": "green",
+        "0 台": "black",
+        "1–2 台": "cadetblue",
+        "3–5 台": "lightblue",
+        "6 台以上": "beige",
     }
     for 分級, 顏色 in 分級顏色.items():
         分級資料 = 有座標[有座標["可借車分級"] == 分級].copy()
@@ -91,10 +92,10 @@ def 建立站點地圖(資料):
     地圖.add_legend(
         title="可借車數",
         legend_dict={
-            "0 台": "red",
-            "1–2 台": "orange",
-            "3–5 台": "beige",
-            "6 台以上": "green",
+            "0 台": "black",
+            "1–2 台": "cadetblue",
+            "3–5 台": "lightblue",
+            "6 台以上": "beige",
         },
     )
     solara.display(地圖)
