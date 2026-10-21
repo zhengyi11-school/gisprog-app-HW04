@@ -224,7 +224,7 @@ def Page(): #solora是方便寫程式的東東
         with solara.Column(style={"min-width": "0", "width": "100%"}):
             建立站點地圖(區域資料)
         with solara.Column(style={"min-width": "0", "width": "100%"}):
-            solara.FigurePlotly(圖, config={"responsive": True})
+            solara.FigurePlotly(圖)
 
     solara.Markdown("## 各行政區空站狀況")
     各區資料表(表, 表格選取行政區)
