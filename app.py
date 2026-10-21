@@ -98,6 +98,16 @@ def 建立站點地圖(資料):
             "6 台以上": "beige",
         },
     )
+
+    # 依篩選後站點範圍取景，並留一點邊界，避免邊緣站點被切掉。
+    緯度留白 = max((有座標["latitude"].max() - 有座標["latitude"].min()) * 0.08, 0.003)
+    經度留白 = max((有座標["longitude"].max() - 有座標["longitude"].min()) * 0.08, 0.003)
+    地圖.fit_bounds(
+        [
+            [有座標["latitude"].min() - 緯度留白, 有座標["longitude"].min() - 經度留白],
+            [有座標["latitude"].max() + 緯度留白, 有座標["longitude"].max() + 經度留白],
+        ]
+    )
     solara.display(地圖)
 
 # reactive：值改變時，用到它的元件會自動重新執行。
@@ -168,6 +178,18 @@ def 各區資料表(表, 選取行政區):
 def Page(): #solora是方便寫程式的東東
     solara.Title("YouBike 空站觀察")
     solara.Markdown("# 臺北 YouBike 各區空站比例")
+    solara.Style(
+        """
+        .responsive-chart,
+        .responsive-chart .js-plotly-plot,
+        .responsive-chart .plot-container {
+            box-sizing: border-box;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+        """
+    )
 
     with solara.Column(
         style={"max-width": "480px", "min-width": "0", "width": "100%"}
@@ -199,15 +221,21 @@ def Page(): #solora是方便寫程式的東東
         color="顯示狀態",
         color_discrete_map=顏色對照,
         orientation="h",
-        title=f"{時段.value}，可借車 ≤ {門檻.value} 算空站（只算營運中的站）",
         labels={"sarea": "", "空站比例": "空站比例", "顯示狀態": ""},
     )
     # 每區給 30 px 高度，行政區名稱才不會被 Plotly 自動隔行省略；換成區數更多的縣市也適用。
+    x軸上限 = max(float(表["空站比例"].max()) * 1.1, 0.05)
     圖.update_layout(
-        yaxis={"categoryorder": "total ascending"},
-        xaxis_tickformat=".0%",
+        yaxis={"categoryorder": "total ascending", "fixedrange": True},
+        xaxis={
+            "tickformat": ".0%",
+            "range": [0, x軸上限],
+            "dtick": 0.05,
+            "fixedrange": True,
+        },
         height=150 + 30 * len(表),
         autosize=True,
+        dragmode=False,
         showlegend=False,
     )
     區域資料 = df[df["時段"] == 時段.value]
@@ -224,7 +252,14 @@ def Page(): #solora是方便寫程式的東東
         with solara.Column(style={"min-width": "0", "width": "100%"}):
             建立站點地圖(區域資料)
         with solara.Column(style={"min-width": "0", "width": "100%"}):
-            solara.FigurePlotly(圖)
+            solara.Markdown(
+                f"### 空站比例：{時段.value}；可借車 ≤ {門檻.value} 台（只計營運站點）"
+            )
+            with solara.Div(
+                classes=["responsive-chart"],
+                style={"width": "100%", "max-width": "100%", "min-width": "0"},
+            ):
+                solara.FigurePlotly(圖)
 
     solara.Markdown("## 各行政區空站狀況")
     各區資料表(表, 表格選取行政區)
