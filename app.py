@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import solara
+import leafmap
 from solara.components.datatable import DataTableWidget
 from solara.util import IPYVUETIFY_V3
 
@@ -54,39 +55,48 @@ def 建立站點地圖(資料):
         return
 
     有座標 = 加入可借車分級(有座標)
-    地圖 = px.scatter_mapbox(
-        有座標,
-        lat="latitude",
-        lon="longitude",
-        color="可借車分級",
-        category_orders={"可借車分級": ["0 台", "1–2 台", "3–5 台", "6 台以上"]},
-        color_discrete_map={
-            "0 台": "#D73027",
-            "1–2 台": "#FC8D59",
-            "3–5 台": "#FEE08B",
-            "6 台以上": "#1A9850",
-        },
-        hover_name="sna",
-        hover_data={
-            "sna": False,
-            "available_rent_bikes": ":.0f",
-            "latitude": False,
-            "longitude": False,
-            "可借車分級": False,
-        },
-        labels={"available_rent_bikes": "可借車數", "可借車分級": "可借車數"},
-        zoom=11,
-        center={"lat": 有座標["latitude"].mean(), "lon": 有座標["longitude"].mean()},
-        height=480,
+    中心點 = (
+        有座標["latitude"].mean(),
+        有座標["longitude"].mean(),
     )
-    地圖.update_traces(marker={"size": 11, "opacity": 0.85})
-    地圖.update_layout(
-        mapbox_style="open-street-map",
-        autosize=True,
-        margin={"l": 0, "r": 0, "t": 0, "b": 0},
-        legend={"title": {"text": "可借車數"}, "orientation": "h", "y": 1.02},
+    地圖 = leafmap.Map(center=中心點, zoom=11)
+    地圖.layout.height = "480px"
+    地圖.layout.width = "100%"
+
+    分級顏色 = {
+        "0 台": "red",
+        "1–2 台": "orange",
+        "3–5 台": "beige",
+        "6 台以上": "green",
+    }
+    for 分級, 顏色 in 分級顏色.items():
+        分級資料 = 有座標[有座標["可借車分級"] == 分級].copy()
+        if 分級資料.empty:
+            continue
+
+        分級資料["站點"] = 分級資料["sna"]
+        分級資料["可借車數"] = 分級資料["available_rent_bikes"]
+        地圖.add_points_from_xy(
+            分級資料,
+            x="longitude",
+            y="latitude",
+            popup=["站點", "可借車數"],
+            layer_name=f"{分級}可借車",
+            color_column="可借車分級",
+            marker_colors=[顏色],
+            add_legend=False,
+        )
+
+    地圖.add_legend(
+        title="可借車數",
+        legend_dict={
+            "0 台": "red",
+            "1–2 台": "orange",
+            "3–5 台": "beige",
+            "6 台以上": "green",
+        },
     )
-    solara.FigurePlotly(地圖, config={"responsive": True})
+    solara.display(地圖)
 
 # reactive：值改變時，用到它的元件會自動重新執行。
 門檻 = solara.reactive(0)   #值有變動，他就會通知大家

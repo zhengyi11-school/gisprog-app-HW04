@@ -4,3 +4,4 @@ solara==1.64.0
 pandas==3.0.6
 plotly==7.1.0
 anywidget==0.11.0
+leafmap==0.63.1
