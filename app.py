@@ -168,11 +168,12 @@ def Page(): #solora是方便寫程式的東東
     solara.Title("YouBike 空站觀察")
     solara.Markdown("# 臺北 YouBike 各區空站比例")
 
-    with solara.Div(style={"width": "100%", "max-width": "100%", "overflow-x": "hidden"}):
-        with solara.Column(style={"max-width": "480px", "width": "100%"}):
-            solara.SliderInt("空站門檻：可借車 ≤", value=門檻, min=0, max=5)
-            solara.ToggleButtonsSingle(value=時段, values=時段們)
-            solara.Select("選擇行政區", value=行政區, values=行政區選項)
+    with solara.Column(
+        style={"max-width": "480px", "min-width": "0", "width": "100%"}
+    ):
+        solara.SliderInt("空站門檻：可借車 ≤", value=門檻, min=0, max=5)
+        solara.Select("選擇時段", value=時段, values=時段們)
+        solara.Select("選擇行政區", value=行政區, values=行政區選項)
 
     當時 = 營運資料[營運資料["時段"] == 時段.value]
     表 = 各區空站比例(當時, 門檻.value)
@@ -205,6 +206,7 @@ def Page(): #solora是方便寫程式的東東
         yaxis={"categoryorder": "total ascending"},
         xaxis_tickformat=".0%",
         height=150 + 30 * len(表),
+        autosize=True,
         showlegend=False,
     )
     區域資料 = df[df["時段"] == 時段.value]
@@ -213,13 +215,10 @@ def Page(): #solora是方便寫程式的東東
     區域資料 = 區域資料.sort_values(["sarea", "sna"])
 
     solara.Markdown(f"## {行政區.value}站點地圖（{時段.value}）")
-    with solara.Div(
-        style={
-            "display": "grid",
-            "grid-template-columns": "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
-            "gap": "16px",
-            "width": "100%",
-        }
+    with solara.ColumnsResponsive(
+        default=12,
+        medium=[6, 6],
+        style={"min-width": "0", "width": "100%"},
     ):
         with solara.Column(style={"min-width": "0", "width": "100%"}):
             建立站點地圖(區域資料)
