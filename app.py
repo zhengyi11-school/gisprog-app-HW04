@@ -182,7 +182,8 @@ def Page(): #solora是方便寫程式的東東
         """
         .responsive-chart,
         .responsive-chart .js-plotly-plot,
-        .responsive-chart .plot-container {
+        .responsive-chart .plot-container,
+        .responsive-chart .svg-container {
             box-sizing: border-box;
             width: 100% !important;
             max-width: 100% !important;
@@ -226,12 +227,14 @@ def Page(): #solora是方便寫程式的東東
     # 每區給 30 px 高度，行政區名稱才不會被 Plotly 自動隔行省略；換成區數更多的縣市也適用。
     x軸上限 = max(float(表["空站比例"].max()) * 1.1, 0.05)
     圖.update_layout(
-        yaxis={"categoryorder": "total ascending", "fixedrange": True},
+        margin={"l": 90, "r": 20, "t": 10, "b": 55, "pad": 0},
+        yaxis={"categoryorder": "total ascending", "fixedrange": True, "automargin": True},
         xaxis={
             "tickformat": ".0%",
             "range": [0, x軸上限],
             "dtick": 0.05,
             "fixedrange": True,
+            "automargin": True,
         },
         height=150 + 30 * len(表),
         autosize=True,
